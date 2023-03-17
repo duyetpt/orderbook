@@ -1,20 +1,23 @@
 package com.vn.onus.ob;
 
-import com.vn.onus.Order;
+import com.vn.onus.order.Order;
 
 import java.util.Optional;
-import java.util.PriorityQueue;
-import java.util.concurrent.PriorityBlockingQueue;
+import java.util.Queue;
 
-public abstract class OrderList {
-    protected PriorityBlockingQueue<Order> list;
+public abstract class OrderList<T extends Order> {
+    protected Queue<T> list;
 
-    public Optional<Order> getBestOrder() {
+    public Optional<T> getBestOrder() {
         return list.isEmpty() ? Optional.empty() : Optional.of(list.poll());
     }
 
-    public void addOrder(Order order) {
+    public void addOrder(T order) {
         list.add(order);
+    }
+
+    public void removeOrder(T order) {
+        list.remove(order);
     }
 
     public boolean isEmpty() {

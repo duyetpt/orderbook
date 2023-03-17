@@ -1,6 +1,8 @@
 package com.vn.onus;
 
 import com.vn.onus.ob.OrderBook;
+import com.vn.onus.order.AskOrder;
+import com.vn.onus.order.BidOrder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -13,17 +15,31 @@ public class Exchange {
         return orderBooks.stream().filter(ob -> ob.getBase() == base && ob.getAsset() == asset).findFirst();
     }
 
-    public void bid(Order order) {
+    public void bid(BidOrder order) {
         var bookOptional = getOrderBook(order.getBaseCurrency(), order.getAsset());
         if (bookOptional.isPresent()) {
             bookOptional.get().addBid(order);
         }
     }
 
-    public void ask(Order order) {
+    public void ask(AskOrder order) {
         var bookOptional = getOrderBook(order.getBaseCurrency(), order.getAsset());
         if (bookOptional.isPresent()) {
             bookOptional.get().addAsk(order);
+        }
+    }
+
+    public void cancelBid(BidOrder order) {
+        var bookOptional = getOrderBook(order.getBaseCurrency(), order.getAsset());
+        if (bookOptional.isPresent()) {
+            bookOptional.get().cancelBid(order);
+        }
+    }
+
+    public void cancelAsk(AskOrder order) {
+        var bookOptional = getOrderBook(order.getBaseCurrency(), order.getAsset());
+        if (bookOptional.isPresent()) {
+            bookOptional.get().cancelAsk(order);
         }
     }
 
@@ -36,40 +52,64 @@ public class Exchange {
         System.out.println("Welcome to Onus exchange");
 
         var exchange = new Exchange();
-        var ob = new OrderBook(Currency.USDT, Currency.BTC);
+        var ob = new OrderBook(Currency.USDT, Currency.BTC, OrderBook.STRATEGY.SINGLE_THREAD);
         exchange.orderBooks.add(ob);
 
         var random = new Random();
-        new Runnable() {
+        var runner = new Runnable() {
             @Override
             public void run() {
                 var startTime = System.currentTimeMillis();
-                while ((System.currentTimeMillis() - startTime) <= 2000) {
-                    var bidOrder = new Order();
+                int i = 0;
+                int iCancellation = 0;
+                while ((System.currentTimeMillis() - startTime) <= 1_000) {
+                    var bidOrder = new BidOrder();
                     bidOrder.setId(UUID.randomUUID().toString());
                     bidOrder.setOrderAmount(random.nextInt(100));
                     bidOrder.setPrice(new BigDecimal(random.nextInt(10_000)));
-                    bidOrder.setOrderType(OrderType.BID);
                     bidOrder.setAsset(Currency.BTC);
                     bidOrder.setBaseCurrency(Currency.USDT);
                     bidOrder.setCreatedDateTime(LocalDateTime.now());
                     exchange.bid(bidOrder);
+                    if (i%20 == 7) {
+                        exchange.cancelBid(bidOrder);
+                        iCancellation += 1;
+                    }
 
-                    var ask = new Order();
+                    var ask = new AskOrder();
                     ask.setId(UUID.randomUUID().toString());
                     ask.setOrderAmount(random.nextInt(100));
                     ask.setPrice(new BigDecimal(random.nextInt(10_000)));
-                    ask.setOrderType(OrderType.ASK);
                     ask.setAsset(Currency.BTC);
                     ask.setBaseCurrency(Currency.USDT);
                     ask.setCreatedDateTime(LocalDateTime.now());
                     exchange.ask(ask);
-
+                    if (i%16 == 7) {
+                        exchange.cancelAsk(ask);
+                        iCancellation += 1;
+                    }
+                    i += 1;
                 }
-                System.out.println("Milliseconds: " + (System.currentTimeMillis() - startTime) + ", count: " + exchange.orderBooks.get(0).getPositions().size());
+                System.out.println("Milliseconds: " + (System.currentTimeMillis() - startTime) + ", orders: " + i +
+                        ", cancellation: " + iCancellation +
+                        ", positions: " + exchange.orderBooks.get(0).getPositions().size());
             }
-        }.run();
+        };
 
+        var thread = new Thread(runner);
+        System.out.println("=== Thread safe mode ===");
+        thread.run();
 
+        System.out.println("=== None thread safe mode ===");
+        ob = new OrderBook(Currency.USDT, Currency.BTC, OrderBook.STRATEGY.SINGLE_THREAD);
+        exchange.orderBooks.clear();
+        exchange.orderBooks.add(ob);
+        thread.run();
+
+        System.out.println("=== None thread safe mode treap ===");
+        ob = new OrderBook(Currency.USDT, Currency.BTC, OrderBook.STRATEGY.SINGLE_THREAD_TREAP);
+        exchange.orderBooks.clear();
+        exchange.orderBooks.add(ob);
+        thread.run();
     }
 }

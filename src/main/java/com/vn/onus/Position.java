@@ -1,5 +1,6 @@
 package com.vn.onus;
 
+import com.vn.onus.order.Order;
 import lombok.Data;
 
 import java.math.BigDecimal;

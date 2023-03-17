@@ -1,37 +1,62 @@
 package com.vn.onus.ob;
 
 import com.vn.onus.*;
+import com.vn.onus.order.AskOrder;
+import com.vn.onus.order.BidOrder;
+import com.vn.onus.order.Order;
 import lombok.Data;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Vector;
 
 @Data
 public class OrderBook {
+
+    public static enum STRATEGY {
+        SINGLE_THREAD,
+        THREAD_SAFE,
+        SINGLE_THREAD_TREAP,
+    }
+
     private BidList bidList;
     private AskList askList;
     private List<Position> positions;
 
     private Currency base;
     private Currency asset;
+    private STRATEGY strategy;
 
-    public OrderBook(Currency base, Currency asset) {
+    public OrderBook(Currency base, Currency asset, STRATEGY strategy) {
         this.base = base;
         this.asset = asset;
-        this.bidList = new BidList();
-        this.askList = new AskList();
-        this.positions = new ArrayList<>();
+        this.bidList = new BidList(strategy);
+        this.askList = new AskList(strategy);
+        if (strategy != null || strategy == STRATEGY.SINGLE_THREAD || strategy == STRATEGY.SINGLE_THREAD_TREAP) {
+            this.positions = new ArrayList<>();
+        } else {
+            this.positions = new Vector<>();
+            this.strategy = STRATEGY.THREAD_SAFE;
+        }
     }
 
-    public void addBid(Order bid) {
+    public void addBid(BidOrder bid) {
         bidList.addOrder(bid);
         if (!askList.isEmpty()) fill();
     }
 
-    public void addAsk(Order ask) {
+    public void addAsk(AskOrder ask) {
         askList.addOrder(ask);
         if (!bidList.isEmpty()) fill();
+    }
+
+    public void cancelBid(BidOrder order) {
+        bidList.removeOrder(order);
+    }
+
+    public void cancelAsk(AskOrder order) {
+        askList.removeOrder(order);
     }
 
     public Position fill() {

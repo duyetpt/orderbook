@@ -1,13 +1,20 @@
 package com.vn.onus.ob;
 
-import com.vn.onus.AskComparator;
-import com.vn.onus.ob.OrderList;
+import com.vn.onus.order.AskOrder;
+import com.vn.onus.treap.Treap;
 
 import java.util.PriorityQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 
-public class AskList extends OrderList {
-    public AskList() {
-        this.list = new PriorityBlockingQueue<>(11, new AskComparator());
+public class AskList extends OrderList<AskOrder> {
+    public AskList(OrderBook.STRATEGY strategy) {
+        switch (strategy) {
+            case SINGLE_THREAD:
+                this.list = new PriorityQueue<>();
+            case SINGLE_THREAD_TREAP:
+                this.list = new Treap<>();
+            default:
+                this.list = new PriorityBlockingQueue<>(11);
+        }
     }
 }
